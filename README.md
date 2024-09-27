@@ -51,7 +51,7 @@ These datasets contain information about companies, including their names, addre
    `git clone https://github.com/yourusername/company-data-merger.git`
 2. Install the required packages:
 
-   pip install pyspark pandas matplotlib seaborn
+   `pip install pyspark pandas matplotlib seaborn`
 
 ## Usage
 
