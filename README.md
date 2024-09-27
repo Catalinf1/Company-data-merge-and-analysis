@@ -4,15 +4,14 @@ This repository contains a Jupyter notebook that demonstrates the process of mer
 
 ## Table of Contents
 
-- Overview
-- Requirements
-- Dataset
-- Key Features
-- Installation
-- Usage
-- Results
-- Contributing
-- License
+- [Overview](#overview)
+- [Requirements](#requirements)
+- [Dataset](#dataset)
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Results](#results)
+- [Approach and Methodology](#approach-and-methodology)
 
 ## Overview
 This project showcases the use of PySpark to merge and analyze company data from three different sources: Facebook, Google, and company websites. The notebook covers data loading, preprocessing, merging, conflict resolution, and analysis, providing insights into the geographical and categorical distribution of companies.
@@ -49,7 +48,8 @@ These datasets contain information about companies, including their names, addre
 1. Clone this repository:
    
    `git clone https://github.com/yourusername/company-data-merger.git`
-2. Install the required packages:
+   
+3. Install the required packages:
 
    `pip install pyspark pandas matplotlib seaborn`
 
@@ -70,3 +70,47 @@ The notebook provides several insights, including:
 - Distribution of domain TLDs
 
 A bar plot visualizing the top 10 countries by number of companies is also generated.
+
+## Approach and Methodology
+
+### Project Context and Relevance
+
+This project is highly relevant to the recruitment process as it demonstrates the ability to handle and merge large datasets from multiple sources, a key skill in data engineering and analysis. It relates directly to Veridion's work in gathering and processing business data from various sources to provide comprehensive company information.
+
+The outcome of this project can create significant business value by:
+1. Enhancing the quality and completeness of company data
+2. Providing insights into data distribution and quality across different sources
+3. Establishing a robust methodology for data merging and conflict resolution
+
+### Data Investigation
+
+I approached the data investigation phase with the following steps:
+1. Loading each dataset and examining its schema
+2. Performing basic statistical analysis (count, distinct values, null values)
+3. Analyzing the distribution of key fields like country, category, and domain
+
+This investigation helped in understanding the structure and quality of each dataset, guiding the subsequent cleaning and merging processes.
+
+### Data Cleaning
+
+The data cleaning process involved:
+1. Standardizing column names across datasets
+2. Handling missing values through imputation where appropriate
+3. Standardizing country names and codes
+4. Cleaning and formatting phone numbers
+5. Validating data types and formats (e.g., ensuring valid country codes)
+
+### Data Join Reasoning
+
+1. Join Column: I chose to use the 'domain' column as the primary join key. This decision was based on the assumption that a company's domain is likely to be unique and consistent across different data sources.
+
+2. Data Conflicts: In cases of conflicting data, I implemented a priority system:
+   Website data > Google data > Facebook data
+   This hierarchy was chosen based on the assumption that a company's own website is likely to have the most up-to-date information.
+
+3. Similar Data: For very similar data, I kept the most complete and recent information. In cases where it wasn't clear which was more recent, I defaulted to the priority system mentioned above.
+
+4. Final Dataset: The final dataset includes all non-conflicting information from all three sources. This approach maximizes the completeness of our company profiles while maintaining data integrity.
+
+
+
