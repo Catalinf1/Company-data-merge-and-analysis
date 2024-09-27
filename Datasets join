@@ -1,0 +1,1859 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "c8f12968",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:11:17.892362Z",
+     "iopub.status.busy": "2024-09-27T15:11:17.891547Z",
+     "iopub.status.idle": "2024-09-27T15:11:18.875874Z",
+     "shell.execute_reply": "2024-09-27T15:11:18.874758Z"
+    },
+    "papermill": {
+     "duration": 0.996478,
+     "end_time": "2024-09-27T15:11:18.878466",
+     "exception": false,
+     "start_time": "2024-09-27T15:11:17.881988",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/datasetsveridion/website_dataset.csv\n",
+      "/kaggle/input/datasetsveridion/google_dataset.csv\n",
+      "/kaggle/input/datasetsveridion/facebook_dataset.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "# This Python 3 environment comes with many helpful analytics libraries installed\n",
+    "# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n",
+    "# For example, here's several helpful packages to load\n",
+    "\n",
+    "import numpy as np # linear algebra\n",
+    "import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n",
+    "\n",
+    "# Input data files are available in the read-only \"../input/\" directory\n",
+    "# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n",
+    "\n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))\n",
+    "\n",
+    "# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n",
+    "# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "da8d9938",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:11:18.895391Z",
+     "iopub.status.busy": "2024-09-27T15:11:18.894857Z",
+     "iopub.status.idle": "2024-09-27T15:12:13.117319Z",
+     "shell.execute_reply": "2024-09-27T15:12:13.115976Z"
+    },
+    "papermill": {
+     "duration": 54.23421,
+     "end_time": "2024-09-27T15:12:13.120254",
+     "exception": false,
+     "start_time": "2024-09-27T15:11:18.886044",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Collecting pyspark\r\n",
+      "  Downloading pyspark-3.5.3.tar.gz (317.3 MB)\r\n",
+      "\u001b[2K     \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m317.3/317.3 MB\u001b[0m \u001b[31m4.7 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+      "\u001b[?25h  Preparing metadata (setup.py) ... \u001b[?25l-\b \b\\\b \bdone\r\n",
+      "\u001b[?25hRequirement already satisfied: py4j==0.10.9.7 in /opt/conda/lib/python3.10/site-packages (from pyspark) (0.10.9.7)\r\n",
+      "Building wheels for collected packages: pyspark\r\n",
+      "  Building wheel for pyspark (setup.py) ... \u001b[?25l-\b \b\\\b \b|\b \bdone\r\n",
+      "\u001b[?25h  Created wheel for pyspark: filename=pyspark-3.5.3-py2.py3-none-any.whl size=317840628 sha256=bbd375bee2cad6a9f66f38600c943a003e0c00bbd1cde9dd658f09a9061ad821\r\n",
+      "  Stored in directory: /root/.cache/pip/wheels/1b/3a/92/28b93e2fbfdbb07509ca4d6f50c5e407f48dce4ddbda69a4ab\r\n",
+      "Successfully built pyspark\r\n",
+      "Installing collected packages: pyspark\r\n",
+      "Successfully installed pyspark-3.5.3\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!pip install pyspark"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0ba54b9b",
+   "metadata": {
+    "papermill": {
+     "duration": 0.016782,
+     "end_time": "2024-09-27T15:12:13.154161",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:13.137379",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Company Data Merger using PySpark\n",
+    "\n",
+    "In this notebook, I'll merge and analyze company data from three different sources: Facebook, Google, and company websites. I chose Python for this task.\n",
+    "\n",
+    "## Setup and Data Loading"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "522ca9d1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:13.190560Z",
+     "iopub.status.busy": "2024-09-27T15:12:13.190168Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.074955Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.073648Z"
+    },
+    "papermill": {
+     "duration": 5.906908,
+     "end_time": "2024-09-27T15:12:19.078040",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:13.171132",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Setting default log level to \"WARN\".\n",
+      "To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).\n",
+      "24/09/27 15:12:17 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\n"
+     ]
+    }
+   ],
+   "source": [
+    "from pyspark.sql import SparkSession\n",
+    "from pyspark.sql.functions import col, lower, trim, when, coalesce, regexp_replace, split, element_at, concat_ws, lit, length\n",
+    "from pyspark.sql.types import StringType, StructType, StructField\n",
+    "from pyspark.sql import functions as F\n",
+    "\n",
+    "# Create SparkSession\n",
+    "spark = SparkSession.builder \\\n",
+    "    .appName('Company Data Merger') \\\n",
+    "    .getOrCreate()\n",
+    "\n",
+    "# Set log level to WARN to reduce verbosity\n",
+    "spark.sparkContext.setLogLevel(\"WARN\")\n",
+    "\n",
+    "def load_datasets():\n",
+    "    \"\"\"\n",
+    "    Load the three datasets from CSV files.\n",
+    "    \"\"\"\n",
+    "    facebook_schema = StructType([\n",
+    "        StructField(\"domain\", StringType(), True),\n",
+    "        StructField(\"address\", StringType(), True),\n",
+    "        StructField(\"categories\", StringType(), True),\n",
+    "        StructField(\"city\", StringType(), True),\n",
+    "        StructField(\"country_code\", StringType(), True),\n",
+    "        StructField(\"country_name\", StringType(), True),\n",
+    "        StructField(\"description\", StringType(), True),\n",
+    "        StructField(\"email\", StringType(), True),\n",
+    "        StructField(\"link\", StringType(), True),\n",
+    "        StructField(\"name\", StringType(), True),\n",
+    "        StructField(\"page_type\", StringType(), True),\n",
+    "        StructField(\"phone\", StringType(), True),\n",
+    "        StructField(\"phone_country_code\", StringType(), True),\n",
+    "        StructField(\"region_code\", StringType(), True),\n",
+    "        StructField(\"region_name\", StringType(), True),\n",
+    "        StructField(\"zip_code\", StringType(), True)\n",
+    "    ])\n",
+    "    \n",
+    "    google_schema = StructType([\n",
+    "        StructField(\"address\", StringType(), True),\n",
+    "        StructField(\"category\", StringType(), True),\n",
+    "        StructField(\"city\", StringType(), True),\n",
+    "        StructField(\"country_code\", StringType(), True),\n",
+    "        StructField(\"country_name\", StringType(), True),\n",
+    "        StructField(\"name\", StringType(), True),\n",
+    "        StructField(\"phone\", StringType(), True),\n",
+    "        StructField(\"phone_country_code\", StringType(), True),\n",
+    "        StructField(\"raw_address\", StringType(), True),\n",
+    "        StructField(\"raw_phone\", StringType(), True),\n",
+    "        StructField(\"region_code\", StringType(), True),\n",
+    "        StructField(\"region_name\", StringType(), True),\n",
+    "        StructField(\"text\", StringType(), True),\n",
+    "        StructField(\"zip_code\", StringType(), True),\n",
+    "        StructField(\"domain\", StringType(), True)\n",
+    "    ])\n",
+    "    \n",
+    "    website_schema = StructType([\n",
+    "        StructField(\"root_domain\", StringType(), True),\n",
+    "        StructField(\"domain_suffix\", StringType(), True),\n",
+    "        StructField(\"language\", StringType(), True),\n",
+    "        StructField(\"legal_name\", StringType(), True),\n",
+    "        StructField(\"main_city\", StringType(), True),\n",
+    "        StructField(\"main_country\", StringType(), True),\n",
+    "        StructField(\"main_region\", StringType(), True),\n",
+    "        StructField(\"phone\", StringType(), True),\n",
+    "        StructField(\"site_name\", StringType(), True),\n",
+    "        StructField(\"tld\", StringType(), True),\n",
+    "        StructField(\"s_category\", StringType(), True)\n",
+    "    ])\n",
+    "\n",
+    "    facebook_df = spark.read.csv('/kaggle/input/datasetsveridion/facebook_dataset.csv', header=True, schema=facebook_schema)\n",
+    "    google_df = spark.read.csv('/kaggle/input/datasetsveridion/google_dataset.csv', header=True, schema=google_schema)\n",
+    "    website_df = spark.read.csv('/kaggle/input/datasetsveridion/website_dataset.csv', header=True, schema=website_schema, sep=';')\n",
+    "    \n",
+    "    return {'facebook': facebook_df, 'google': google_df, 'website': website_df}\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "40576378",
+   "metadata": {
+    "papermill": {
+     "duration": 0.017622,
+     "end_time": "2024-09-27T15:12:19.113145",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.095523",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "I start by setting up our PySpark session and loading our datasets. I use `inferSchema=True` to automatically detect the data types of our columns, which can save time and reduce errors in data processing.\n",
+    "\n",
+    "## Data Preprocessing\n",
+    "\n",
+    "Before merging our datasets, I need to preprocess them to ensure consistency in column names and data formats."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "1c710759",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.149536Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.149143Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.159923Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.158819Z"
+    },
+    "papermill": {
+     "duration": 0.032224,
+     "end_time": "2024-09-27T15:12:19.162403",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.130179",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def preprocess_data(df, source):\n",
+    "    \"\"\"\n",
+    "    Preprocess the data by cleaning and standardizing columns.\n",
+    "    \"\"\"\n",
+    "    # Lowercase column names\n",
+    "    for col_name in df.columns:\n",
+    "        df = df.withColumnRenamed(col_name, col_name.lower())\n",
+    "    \n",
+    "    # Strip whitespace from string columns\n",
+    "    string_columns = [f.name for f in df.schema.fields if isinstance(f.dataType, StringType)]\n",
+    "    for col_name in string_columns:\n",
+    "        df = df.withColumn(col_name, trim(col(col_name)))\n",
+    "\n",
+    "    # Handle specific column renaming for different sources\n",
+    "    if source == 'facebook':\n",
+    "        df = df.withColumnRenamed(\"country_code\", \"country\") \\\n",
+    "               .withColumnRenamed(\"region_code\", \"region\") \\\n",
+    "               .withColumnRenamed(\"categories\", \"category\") \\\n",
+    "               .withColumn(\"domain\", split(col(\"link\"), \"://\").getItem(1).alias(\"domain\"))\n",
+    "    elif source == 'website':\n",
+    "        df = df.withColumnRenamed(\"main_country\", \"country\") \\\n",
+    "               .withColumnRenamed(\"main_region\", \"region\") \\\n",
+    "               .withColumnRenamed(\"main_city\", \"city\") \\\n",
+    "               .withColumnRenamed(\"s_category\", \"category\") \\\n",
+    "               .withColumnRenamed(\"legal_name\", \"name\") \\\n",
+    "               .withColumn(\"domain\", concat_ws(\".\", col(\"root_domain\"), col(\"domain_suffix\")))\n",
+    "    \n",
+    "        \n",
+    "    return df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "9d6f9b72",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.198763Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.198319Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.207528Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.206403Z"
+    },
+    "papermill": {
+     "duration": 0.030216,
+     "end_time": "2024-09-27T15:12:19.209963",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.179747",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def standardize_country(df):\n",
+    "    country_mapping = {\n",
+    "        'ca': 'canada',\n",
+    "        'us': 'united states',\n",
+    "        'usa': 'united states',\n",
+    "        'gb': 'united kingdom',\n",
+    "        'uk': 'united kingdom',\n",
+    "        'au': 'australia',\n",
+    "        'fr': 'france',\n",
+    "        'de': 'germany',\n",
+    "    }\n",
+    "    \n",
+    "    # Identify all potential country-related columns\n",
+    "    potential_country_cols = ['country', 'country_name', 'country_code', 'main_country']\n",
+    "    existing_country_cols = [col_name for col_name in potential_country_cols if col_name in df.columns]\n",
+    "    \n",
+    "    if existing_country_cols:\n",
+    "        # Apply mapping using a broadcast join for better performance\n",
+    "        mapping_df = spark.createDataFrame(list(country_mapping.items()), ['abbr', 'full_name'])\n",
+    "        country_expr = coalesce(*[lower(col(c)) for c in existing_country_cols])\n",
+    "        df = df.join(mapping_df, country_expr == col('abbr'), how='left')\n",
+    "        df = df.withColumn('country', coalesce(col('full_name'), country_expr)).drop('abbr', 'full_name')\n",
+    "    \n",
+    "    return df\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "4eb888f8",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.246355Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.245955Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.253107Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.251911Z"
+    },
+    "papermill": {
+     "duration": 0.028058,
+     "end_time": "2024-09-27T15:12:19.255461",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.227403",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from pyspark.sql import DataFrame\n",
+    "\n",
+    "def standardize_data(df: DataFrame) -> DataFrame:\n",
+    "    # Standardize 'phone' format to remove non-numeric characters except '+'\n",
+    "    df = df.withColumn('phone', F.regexp_replace(F.col('phone'), '[^\\d+]', ''))\n",
+    "    \n",
+    "    # Standardize 'country_code' to lowercase\n",
+    "    df = df.withColumn('country_code', F.lower(F.col('country_code')))\n",
+    "    \n",
+    "    # Standardize 'zip_code' by removing spaces\n",
+    "    df = df.withColumn('zip_code', F.regexp_replace(F.col('zip_code'), '\\s+', ''))\n",
+    "    \n",
+    "    return df"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "23615266",
+   "metadata": {
+    "papermill": {
+     "duration": 0.016905,
+     "end_time": "2024-09-27T15:12:19.289657",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.272752",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "In the preprocessing step, I:\n",
+    "1. Convert all column names to lowercase for consistency.\n",
+    "2. Remove any leading or trailing whitespace from string columns.\n",
+    "3. Standardize column names across datasets. This is crucial for successful merging later on, as well as visualization.\n",
+    "\n",
+    "## Merging Datasets\n",
+    "\n",
+    "Now that our data is preprocessed, I can merge the datasets."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "7f8f3fce",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.325947Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.325518Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.334398Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.333362Z"
+    },
+    "papermill": {
+     "duration": 0.029769,
+     "end_time": "2024-09-27T15:12:19.336751",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.306982",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def rename_columns(df, suffix):\n",
+    "    \n",
+    "    # Rename all columns except 'domain'\n",
+    "    new_columns = [col(column).alias(f\"{column}{suffix}\") if column != \"domain\" else col(column) for column in df.columns]\n",
+    "    \n",
+    "    return df.select(*new_columns)\n",
+    "\n",
+    "def merge_datasets(datasets):\n",
+    "    # Start with Google dataset as the base\n",
+    "    base_df = datasets['google']\n",
+    "    \n",
+    "    for source in ['facebook', 'website']:\n",
+    "        join_cols = ['domain']  # Add more columns if needed for a more robust join\n",
+    "        source_df = datasets[source].select(*join_cols, *[col(c).alias(f\"{c}_{source}\") for c in datasets[source].columns if c not in join_cols])\n",
+    "        base_df = base_df.join(source_df, on=join_cols, how='full_outer')\n",
+    "    \n",
+    "    return base_df"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "20acfb15",
+   "metadata": {
+    "papermill": {
+     "duration": 0.0184,
+     "end_time": "2024-09-27T15:12:19.372487",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.354087",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "I use a full outer join on the 'domain' column to merge our datasets. This ensures we keep all records from all datasets, even if there's no match in other datasets. I use the Google dataset as our base, then merge in Facebook and Website data.\n",
+    "\n",
+    "## Resolving Conflicts\n",
+    "\n",
+    "After merging, we may have conflicting information from different sources. I need to resolve these conflicts."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "8a733f30",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.409332Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.408932Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.418233Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.417035Z"
+    },
+    "papermill": {
+     "duration": 0.030609,
+     "end_time": "2024-09-27T15:12:19.420504",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.389895",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def resolve_conflicts(merged_df):\n",
+    "    columns_to_resolve = ['name', 'category', 'address', 'city', 'country', 'phone', 'region_code', 'zip_code']\n",
+    "    \n",
+    "    for column in columns_to_resolve:\n",
+    "        sources = ['google', 'facebook', 'website']\n",
+    "        coalesce_cols = [col(f\"{column}_{source}\") for source in sources if f\"{column}_{source}\" in merged_df.columns]\n",
+    "        coalesce_cols.append(col(column))  # Add original column if it exists\n",
+    "        \n",
+    "        merged_df = merged_df.withColumn(column, coalesce(*coalesce_cols))\n",
+    "    \n",
+    "    # Drop unnecessary columns\n",
+    "    columns_to_drop = [c for c in merged_df.columns if '_google' in c or '_facebook' in c or '_website' in c]\n",
+    "    phone_cols = [col(c) for c in merged_df.columns if c.startswith(\"phone\") and c != \"phone_country_code\"]\n",
+    "    merged_df = merged_df.withColumn(\"phone\", coalesce(*phone_cols))\n",
+    "    merged_df = merged_df.drop(*columns_to_drop)\n",
+    "    \n",
+    "    return merged_df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "d34ef710",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.457232Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.456832Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.471244Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.470000Z"
+    },
+    "papermill": {
+     "duration": 0.035955,
+     "end_time": "2024-09-27T15:12:19.473954",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.437999",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from pyspark.sql import DataFrame\n",
+    "from itertools import chain\n",
+    "\n",
+    "# Imputation and Standardization Functions\n",
+    "def impute_missing_values(df: DataFrame) -> DataFrame:\n",
+    "    columns_to_impute = ['country_name', 'country_code', 'address', 'city', 'phone_country_code', 'phone', 'region', 'zip_code']\n",
+    "    \n",
+    "    for column in columns_to_impute:\n",
+    "        if column in df.columns:\n",
+    "            # Impute missing values with 'Unknown'\n",
+    "            df = df.withColumn(column, F.coalesce(F.col(column), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute 'country_code' based on 'country_name' where applicable\n",
+    "        if 'country_code' in df.columns and 'country_name' in df.columns:\n",
+    "            country_code_map = {\n",
+    "            'united states': 'us', \n",
+    "            'canada': 'ca', \n",
+    "            'united kingdom': 'gb', \n",
+    "            'australia': 'au', \n",
+    "            'france': 'fr', \n",
+    "            'germany': 'de'\n",
+    "            }\n",
+    "            df = df.withColumn(\n",
+    "            'country_code',\n",
+    "            F.coalesce(\n",
+    "                F.col('country_code'), \n",
+    "                F.create_map([F.lit(x) for x in chain(*country_code_map.items())])\n",
+    "                .getItem(F.lower(F.col('country_name')))\n",
+    "            )\n",
+    "        )\n",
+    "        \n",
+    "    # Impute missing 'address' with 'Unknown'\n",
+    "    df = df.withColumn('address', F.coalesce(F.col('address'), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute missing 'city' with 'Unknown'\n",
+    "    df = df.withColumn('city', F.coalesce(F.col('city'), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute missing 'country_name' with 'Unknown'\n",
+    "    df = df.withColumn('country_name', F.coalesce(F.col('country_name'), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute missing 'phone_country_code' with 'Unknown'\n",
+    "    df = df.withColumn('phone_country_code', F.coalesce(F.col('phone_country_code'), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute missing 'phone' with 'Unknown'\n",
+    "    df = df.withColumn('phone', F.coalesce(F.col('phone'), F.lit('Unknown')))\n",
+    "    \n",
+    "    # Impute missing 'zip_code' with 'Unknown'\n",
+    "    df = df.withColumn('zip_code', F.coalesce(F.col('zip_code'), F.lit('Unknown')))\n",
+    "    \n",
+    "    return df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "d457f255",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.511095Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.510682Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.519188Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.517991Z"
+    },
+    "papermill": {
+     "duration": 0.030078,
+     "end_time": "2024-09-27T15:12:19.521676",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.491598",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def validate_data(df):\n",
+    "    # Check for misplaced data.\n",
+    "    df = df.withColumn(\"city\", when(col(\"city\").rlike(\"^[A-Za-z\\s]+$\"), col(\"city\")).otherwise(lit(None)))\n",
+    "    \n",
+    "    # Ensure phone numbers are in correct format again.\n",
+    "    df = df.withColumn(\"phone\", when(col(\"phone\").rlike(\"^\\+?[0-9\\-\\s()]+$\"), col(\"phone\")).otherwise(lit(None)))\n",
+    "    \n",
+    "    # Validate country codes.\n",
+    "    valid_country_codes = [\"us\", \"ca\", \"gb\", \"au\", \"fr\", \"de\"]  \n",
+    "    df = df.withColumn(\"country_code\", when(lower(col(\"country_code\")).isin(valid_country_codes), lower(col(\"country_code\"))).otherwise(lit(None)))\n",
+    "    \n",
+    "    return df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "5e8ce3ff",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.558680Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.558297Z",
+     "iopub.status.idle": "2024-09-27T15:12:19.565992Z",
+     "shell.execute_reply": "2024-09-27T15:12:19.564746Z"
+    },
+    "papermill": {
+     "duration": 0.028955,
+     "end_time": "2024-09-27T15:12:19.568322",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.539367",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def data_quality_checks(df):\n",
+    "    total_rows = df.count()\n",
+    "    print(f\"\\nTotal rows: {total_rows}\")\n",
+    "    \n",
+    "    print(\"\\nMissing value percentages:\")\n",
+    "    for column in df.columns:\n",
+    "        missing_count = df.filter(col(column).isNull()).count()\n",
+    "        missing_percentage = (missing_count / total_rows) * 100\n",
+    "        print(f\"{column}: {missing_percentage:.2f}%\")\n",
+    "    \n",
+    "    print(\"\\nUnique values in key columns:\")\n",
+    "    for column in ['country', 'category']:\n",
+    "        unique_count = df.select(column).distinct().count()\n",
+    "        print(f\"{column}: {unique_count}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e523dd49",
+   "metadata": {
+    "papermill": {
+     "duration": 0.017252,
+     "end_time": "2024-09-27T15:12:19.603469",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.586217",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "In conflict resolution, I prioritize data in this order: Website > Google > Facebook. This is based on the assumption that a company's own website is likely to have the most up-to-date information, followed by Google, and then Facebook.\n",
+    "\n",
+    "## Main Execution"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "a56465ff",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:12:19.641389Z",
+     "iopub.status.busy": "2024-09-27T15:12:19.641009Z",
+     "iopub.status.idle": "2024-09-27T15:15:11.496577Z",
+     "shell.execute_reply": "2024-09-27T15:15:11.495305Z"
+    },
+    "papermill": {
+     "duration": 171.878199,
+     "end_time": "2024-09-27T15:15:11.500191",
+     "exception": false,
+     "start_time": "2024-09-27T15:12:19.621992",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Datasets loaded. Sample of each:\n",
+      "\n",
+      "Facebook dataset:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-----------------------+------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+---------+-------+------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-------------------------------+-------------------------------------+-------------+------------+------------------+------+----------------+--------+\n",
+      "|domain                 |address                                                                 |category                                                                                            |city     |country|country_name|description                                                                                                                                                            |email                     |link                           |name                                 |page_type    |phone       |phone_country_code|region|region_name     |zip_code|\n",
+      "+-----------------------+------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+---------+-------+------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-------------------------------+-------------------------------------+-------------+------------+------------------+------+----------------+--------+\n",
+      "|rossiterboats.com      |NULL                                                                    |Boats & Yachts Dealers|Boat Tours & Cruises                                                         |NULL     |NULL   |NULL        |At Rossiter Boats we build semi-custom power boats for people who love being out on the water whether it's ocean, river, lake or pond. Products Semi-Custom Power boats|info@rossiterboats.com    |http://rossiterboats.com       |Rossiter Boats                       |LocalBusiness|NULL        |NULL              |NULL  |NULL            |NULL    |\n",
+      "|collins-cc.edu         |NULL                                                                    |Other schools|High Schools|Community Center|Adult Education Schools|Adult Education Schools         |NULL     |NULL   |NULL        |NULL                                                                                                                                                                   |NULL                      |https://collins-cc.edu         |Collins Career Technical Center      |LocalBusiness|NULL        |NULL              |NULL  |NULL            |NULL    |\n",
+      "|lakesidehomeservices.ca|NULL                                                                    |Appliance Repair & Maintenance|Home Builders & Renovation Contractors|Appliance Repair & Maintenance|NULL     |canada |NULL        |NULL                                                                                                                                                                   |NULL                      |https://lakesidehomeservices.ca|Lakeside Home Services               |LocalBusiness|+16138318840|ca                |NULL  |NULL            |NULL    |\n",
+      "|caa-architecture.com   |601 cordova st w # 270, v6b 1g1, vancouver, bc, canada, british columbia|Architects & Architectural Services|Other Engineering Services                                      |vancouver|canada |canada      |NULL                                                                                                                                                                   |office@caa-arcitecture.com|http://caa-architecture.com    |Chandler Associates Architecture Inc.|LocalBusiness|+16046873390|ca                |bc    |british columbia|v6b 1g1 |\n",
+      "|apexsurety.ca          |unit 3 - 4 donald street, r3l 2t7, winnipeg, mb, canada, manitoba       |NULL                                                                                                |winnipeg |canada |canada      |NULL                                                                                                                                                                   |NULL                      |https://apexsurety.ca          |Apex Surety & Insurance Ltd.         |LocalBusiness|+12045602508|ca                |mb    |manitoba        |r3l 2t7 |\n",
+      "+-----------------------+------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+---------+-------+------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-------------------------------+-------------------------------------+-------------+------------+------------------+------+----------------+--------+\n",
+      "only showing top 5 rows\n",
+      "\n",
+      "Facebook schema:\n",
+      "root\n",
+      " |-- domain: string (nullable = true)\n",
+      " |-- address: string (nullable = true)\n",
+      " |-- category: string (nullable = true)\n",
+      " |-- city: string (nullable = true)\n",
+      " |-- country: string (nullable = true)\n",
+      " |-- country_name: string (nullable = true)\n",
+      " |-- description: string (nullable = true)\n",
+      " |-- email: string (nullable = true)\n",
+      " |-- link: string (nullable = true)\n",
+      " |-- name: string (nullable = true)\n",
+      " |-- page_type: string (nullable = true)\n",
+      " |-- phone: string (nullable = true)\n",
+      " |-- phone_country_code: string (nullable = true)\n",
+      " |-- region: string (nullable = true)\n",
+      " |-- region_name: string (nullable = true)\n",
+      " |-- zip_code: string (nullable = true)\n",
+      "\n",
+      "\n",
+      "Google dataset:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-----------------------------------------------------------------------+---------------------------------+--------------+------------+-------------+----------------------------------+------------+------------------+--------------------------------------------------------+---------------+-----------+---------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------+-------------------+-------------+\n",
+      "|address                                                                |category                         |city          |country_code|country_name |name                              |phone       |phone_country_code|raw_address                                             |raw_phone      |region_code|region_name    |text                                                                                                                                                                         |zip_code|domain             |country      |\n",
+      "+-----------------------------------------------------------------------+---------------------------------+--------------+------------+-------------+----------------------------------+------------+------------------+--------------------------------------------------------+---------------+-----------+---------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------+-------------------+-------------+\n",
+      "|28 Central Coast Hwy, West Gosford NSW 2250, Australia                 |Fabric-Based Home Goods          |gosford       |au          |australia    |Spotlight West Gosford            |+61243355946|au                |West Gosford NSW, Australia                             |+61 2 4335 5946|nsw        |new south wales|4.1 (766) · Craft store West Gosford NSW, Australia Closed ⋅ Opens 9AM Sun · +61 2 4335 5946 In-store pickup·In-store shopping                                               |2250    |spotlightstores.com|australia    |\n",
+      "|NULL                                                                   |Catering & Delivery              |NULL          |NULL        |NULL         |Lakay express                     |NULL        |NULL              |NULL                                                    |NULL           |NULL       |NULL           |5.0 (1) · Mobile caterer Open ⋅ Closes 9PM                                                                                                                                   |NULL    |linktr.ee          |NULL         |\n",
+      "|400 Scott St, St. Catharines, ON L2M 3W2, Canada                       |Book Stores                      |st. catharines|ca          |canada       |Heritage Christian Book Store     |+19059374553|ca                |400 Scott St · In Grantham Plaza                        |+1 905-937-4553|on         |ontario        |4.7 (100) · Book store 400 Scott St · In Grantham Plaza Closes soon ⋅ 5PM · +1 905-937-4553 In-store shopping·Curbside pickup·Delivery                                       |l2m 3w2 |bookmanager.com    |canada       |\n",
+      "|191 Pleasant St, Yarmouth, NS B5A 2J9, Canada                          |Other Building Material Retailers|yarmouth      |ca          |canada       |Pleasant Timber Mart              |+19027429181|ca                |7+ years in business · Yarmouth, NS, Canada             |+1 902-742-9181|ns         |nova scotia    |4.7 (40) · Building materials store 7+ years in business · Yarmouth, NS, Canada Closed ⋅ Opens 7:30AM Mon · +1 902-742-9181 Curbside pickup·In-store pickup·In-store shopping|b5a 2j9 |timbermart.ca      |canada       |\n",
+      "|11040 Santa Monica Blvd Suite 370, Los Angeles, CA 90025, United States|Plastic Surgery Clinics          |los angeles   |us          |united states|Skin Specifics Medical Spa West LA|+18184268353|us                |7+ years in business · 11040 Santa Monica Blvd Suite 370|+1 818-426-8353|ca         |california     |4.3 (15) · Medical spa 7+ years in business · 11040 Santa Monica Blvd Suite 370 Closed ⋅ Opens 9AM Tue · +1 818-426-8353                                                     |90025   |linktr.ee          |united states|\n",
+      "+-----------------------------------------------------------------------+---------------------------------+--------------+------------+-------------+----------------------------------+------------+------------------+--------------------------------------------------------+---------------+-----------+---------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------+-------------------+-------------+\n",
+      "only showing top 5 rows\n",
+      "\n",
+      "Google schema:\n",
+      "root\n",
+      " |-- address: string (nullable = true)\n",
+      " |-- category: string (nullable = true)\n",
+      " |-- city: string (nullable = true)\n",
+      " |-- country_code: string (nullable = true)\n",
+      " |-- country_name: string (nullable = true)\n",
+      " |-- name: string (nullable = true)\n",
+      " |-- phone: string (nullable = true)\n",
+      " |-- phone_country_code: string (nullable = true)\n",
+      " |-- raw_address: string (nullable = true)\n",
+      " |-- raw_phone: string (nullable = true)\n",
+      " |-- region_code: string (nullable = true)\n",
+      " |-- region_name: string (nullable = true)\n",
+      " |-- text: string (nullable = true)\n",
+      " |-- zip_code: string (nullable = true)\n",
+      " |-- domain: string (nullable = true)\n",
+      " |-- country: string (nullable = true)\n",
+      "\n",
+      "\n",
+      "Website dataset:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-------------------+-------------+--------+------------------------------------------+--------+---------+--------------------+-----------+----------------------+----+----------------------------------+----------------------+\n",
+      "|root_domain        |domain_suffix|language|name                                      |city    |country  |region              |phone      |site_name             |tld |category                          |domain                |\n",
+      "+-------------------+-------------+--------+------------------------------------------+--------+---------+--------------------+-----------+----------------------+----+----------------------------------+----------------------+\n",
+      "|investa.com.au     |com.au       |en      |Investa Wholesale Funds Management Limited|brisbane|australia|queensland          |61282269300|Investa Property Group|au  |Real Estate Developers            |investa.com.au.com.au |\n",
+      "|converterman.com   |NULL         |NULL    |NULL                                      |NULL    |NULL     |NULL                |NULL       |NULL                  |NULL|NULL                              |converterman.com      |\n",
+      "|clothesencounter.ca|ca           |en      |NULL                                      |cardigan|canada   |prince edward island|13066937766|Clothes Encounter     |ca  |Shoes & Other Footwear Stores     |clothesencounter.ca.ca|\n",
+      "|timminsgarage.com  |com          |en      |Timmins Garage Inc.                       |timmins |canada   |ontario             |18775896640|Timmins Garage        |com |Automobile Dealers & Manufacturers|timminsgarage.com.com |\n",
+      "|destinate.ca       |ca           |en      |Destinate Group Ltd.                      |NULL    |canada   |NULL                |NULL       |Destinate Group       |ca  |Business Consulting               |destinate.ca.ca       |\n",
+      "+-------------------+-------------+--------+------------------------------------------+--------+---------+--------------------+-----------+----------------------+----+----------------------------------+----------------------+\n",
+      "only showing top 5 rows\n",
+      "\n",
+      "Website schema:\n",
+      "root\n",
+      " |-- root_domain: string (nullable = true)\n",
+      " |-- domain_suffix: string (nullable = true)\n",
+      " |-- language: string (nullable = true)\n",
+      " |-- name: string (nullable = true)\n",
+      " |-- city: string (nullable = true)\n",
+      " |-- country: string (nullable = true)\n",
+      " |-- region: string (nullable = true)\n",
+      " |-- phone: string (nullable = true)\n",
+      " |-- site_name: string (nullable = true)\n",
+      " |-- tld: string (nullable = true)\n",
+      " |-- category: string (nullable = true)\n",
+      " |-- domain: string (nullable = false)\n",
+      "\n",
+      "\n",
+      "Merged dataset (before conflict resolution):\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "24/09/27 15:12:36 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.\n",
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-------+-------------+-------------------------------------------------------------------------------------------------+-----------------------+------+------------+------------+-------------------------------------------------------+--------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+------------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+-------------+----------------+---------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-----------------------+--------------------------------+-----------------------------------------------------------------------------------+-------------------------------+---------------------------+------------------+--------------------+-------------------+-------------------+---------------------+----------------+--------------------------------------------------------------+------------+---------------------+--------------+---------------------+-------------------------------------------------------------+-----------+-----------------------+\n",
+      "|summary|domain       |address                                                                                          |category               |city  |country_code|country_name|name                                                   |phone               |phone_country_code|raw_address                                                                            |raw_phone     |region_code|region_name|text                                                                                           |zip_code          |country|address_facebook                                                                                                                                                   |category_facebook                   |city_facebook|country_facebook|country_name_facebook                  |description_facebook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |email_facebook            |link_facebook          |name_facebook                   |page_type_facebook                                                                 |phone_facebook                 |phone_country_code_facebook|region_facebook   |region_name_facebook|zip_code_facebook  |root_domain_website|domain_suffix_website|language_website|name_website                                                  |city_website|country_website      |region_website|phone_website        |site_name_website                                            |tld_website|category_website       |\n",
+      "+-------+-------------+-------------------------------------------------------------------------------------------------+-----------------------+------+------------+------------+-------------------------------------------------------+--------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+------------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+-------------+----------------+---------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-----------------------+--------------------------------+-----------------------------------------------------------------------------------+-------------------------------+---------------------------+------------------+--------------------+-------------------+-------------------+---------------------+----------------+--------------------------------------------------------------+------------+---------------------+--------------+---------------------+-------------------------------------------------------------+-----------+-----------------------+\n",
+      "|count  |431884       |330552                                                                                           |304870                 |311002|304084      |311039      |356490                                                 |323948              |241258            |311875                                                                                 |328160        |310854     |310854     |353005                                                                                         |273400            |337705 |120333                                                                                                                                                             |209355                              |96316        |116754          |96913                                  |50935                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |28096                     |252739                 |252733                          |252711                                                                             |84927                          |58662                      |96308             |96303               |76088              |74145              |71900                |66826           |31989                                                         |60968       |64869                |60935         |65640                |68714                                                        |71757      |70634                  |\n",
+      "|mean   |NULL         |NULL                                                                                             |NULL                   |NULL  |1.0         |NULL        |28843.428571428572                                     |1.335193177450023E11|1.0               |NULL                                                                                   |NULL          |NaN        |NULL       |NULL                                                                                           |122429.16264313326|NULL   |62684.555555555555                                                                                                                                                 |31047.25                            |NULL         |NULL            |NULL                                   |1.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |NULL                      |NULL                   |3.82                            |NULL                                                                               |8.429272849289705E10           |1.28940117E10              |26.537224538415725|1.32102783948E10    |3.791283246834939E7|NULL               |NULL                 |NULL            |1.8259557840075E11                                            |NaN         |1.1325712714124243E11|NaN           |1.6766246887632039E12|693.6                                                        |NULL       |NULL                   |\n",
+      "|stddev |NULL         |NULL                                                                                             |NULL                   |NULL  |0.0         |NULL        |20983.41034291251                                      |2.853368901530333E12|0.0               |NULL                                                                                   |NULL          |NaN        |NULL       |NULL                                                                                           |2702298.327830179 |NULL   |115848.03076348678                                                                                                                                                 |16840.09598893862                   |NULL         |NULL            |NULL                                   |NULL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |NULL                      |NULL                   |NULL                            |NULL                                                                               |3.9912534189678677E12          |NULL                       |25.160532231382295|7.652714703179832E9 |4.232614887094534E9|NULL               |NULL                 |NULL            |3.2040711835041907E11                                         |NaN         |2.5831992150195197E11|NaN           |2.7173464436105384E14|804.9358980689084                                            |NULL       |NULL                   |\n",
+      "|min    |             |\"... more bottles, and I try to ration it like it's water in the Sahara, but if it ...\"          |ATVs Dealers & Services|'aiea |001         |afghanistan |!MPACT Theatre                                         |+12012017300        |001               |\"... more bottles, and I try to ration it like it's water in the Sahara, but if it ...\"|(01) 444 5995 |00         |aargau     |#05 Mac Arthur Highway, Paraiso,, #05 MacArthur Highway Closed ⋅ Opens 8:30AM · +63 45 985 0220|000               |ad     |                                                                                                                                                                   |07000                               |100.yil      |ab              |Business Consulting|Business Consulting|!!!We are hiring again!!!! We currently have a range of temporary positions available ; with the opportunity to possibly become full time. General Labourers can be found on almost all job sites doing a wide range of tasks.... Many of the jobs they perform are physically strenuous and may require special training or experience. Responsibilities: * Moving, securing, installing, building, loading, or unloading materials * Assisting in the building or construction of various things * Some specialized tasks may require on-the-job training * Effectively using heavy and light equipment, depending on the job-assignment * Moving items from place to place, according to direction from the site supervisor * There is no minimum educational requirement, but specialized training can help laborers advance * Experience on commercial construction sites * Verifiable work history that shows professional skills and experience * Strong work ethic Must have a full driver's license and access to a working vehicle These jobs are going to start asap and will be a mix of weekends and evenings. Email your resumes to titanelectricalcontractors@gmail.com|1000islandscycle@gmail.com|Colleges & Universities|\"Yale Primary School repps\"     |Additional Information South Indian take out restaurant catering to all demography.|+12012615620                   |+12894011700               |00                |+14039153986        |+13063742233       |(519) 771-8508\"\"   |,                    |,               |\"OJSC \\Uralkali\\ (OJSC \"\"Uralkali\\\"\" Company\"\")\"\"\"            |,           |,                    |12042940005   |12012201342          |\"\\KONTsERN RADIOSTROENIIa \\VEGA\"\".\"\"\"                        |Chemicals  |ATVs Dealers & Services|\n",
+      "|max    |Â \"\".edmonton|ＵＥＭＵＲＡ ＳＴＵＤＩＯ 2 Chome-1-10 Hachiken 4 Jonishi, Nishi Ward, Sapporo, Hokkaido 063-0844|Zoo                    |zywiec|zw          |Åland       |🧵 Atelier de Couture Karine Mascouche -Sur Rendez-vous|+998951439555       |zw                |２３ 87, Asahidai                                                                      |99 06 785 7651|zu         |zurich     |高崎市上小塙町 Gunma, Japan · +81 27-344-2311 Closed ⋅ Opens 9:30AM Tue In-store shopping      |ze1 0ex           |åland  |📞+7 (8482) 20-83-61 ✉️e-mail:info@teko-filter.ru 🔎самарская область, г. тольятти  ул. ульяны громовой 33а, 445045, tolyatti, samara oblast, russia, samara oblast|‏دالاس‏، ‏تكساس‏، ‏الولايات المتحدة‏|zwolle       |zw              |zimbabwe                               |🧹 Cleaning Job Opportunity 🧹 We’re looking for a superstar part-time cleaner (36 hours per fortnight) for the Margaret River Library! Do you fit the bill? The successful applicant will take pride in their work and have an eye for attention to detail. Preference will be given to candidates with public and/or commercial cleaning experience.... Applications close Friday 4 June at 4pm. Apply here (bit.ly/3fAPVpX) or contact Heather Auld on 9780 5601 for more information.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |zyara.mc@gmail.com        |vn                     |𝗢𝗣𝗨𝗦 𝗔𝗥𝗧 𝗣𝗥𝗢𝗝𝗘𝗖𝗧𝗦|turkey                                                                             |matt@kmspropertymaintenance.com|za                         |zj                |zurich              |yo88ry             |Â \"\"               |za                   |yorktown heights|æ ªå¼ä¼šç¤¾ãƒ¦ãƒ‹ãƒžãƒƒãƒˆãƒ©ã‚¤ãƒ•ï½œUNIMAT LIFE CORPORATION|zwolle      |zimbabwe             |zurich        |vn                   |í•˜ì½”ë„¤ ì „ë¬¸ ì—¬í–‰ì‚¬, ìžìœ ì—¬í–‰ | ì˜¤ë‹¤ííŠ¸ëž˜ë¸”|zw         |Zoo                    |\n",
+      "+-------+-------------+-------------------------------------------------------------------------------------------------+-----------------------+------+------------+------------+-------------------------------------------------------+--------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+------------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+-------------+----------------+---------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------+-----------------------+--------------------------------+-----------------------------------------------------------------------------------+-------------------------------+---------------------------+------------------+--------------------+-------------------+-------------------+---------------------+----------------+--------------------------------------------------------------+------------+---------------------+--------------+---------------------+-------------------------------------------------------------+-----------+-----------------------+\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/lib/python3.10/site-packages/pyspark/sql/column.py:460: FutureWarning: A column as 'key' in getItem is deprecated as of Spark 3.0, and will not be supported in the future release. Use `column[key]` or `column.key` syntax instead.\n",
+      "  warnings.warn(\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Final merged dataset (after conflict resolution, imputation, and standardization):\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+------+------------+------------+--------------------------+---------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+--------------------+---------------------+\n",
+      "|summary|domain       |address                                                                                                                                                            |category                            |city  |country_code|country_name|name                      |phone                |phone_country_code|raw_address                                                                            |raw_phone     |region_code|region_name|text                                                                                           |zip_code            |country              |\n",
+      "+-------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+------+------------+------------+--------------------------+---------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+--------------------+---------------------+\n",
+      "|count  |431884       |431999                                                                                                                                                             |407904                              |431999|431999      |431999      |391988                    |431999               |431999            |311875                                                                                 |328160        |310854     |310854     |353005                                                                                         |431999              |407182               |\n",
+      "|mean   |NULL         |62684.555555555555                                                                                                                                                 |31047.25                            |NaN   |1.0         |NULL        |1.0434034074484427E11     |1.2198500587641814E11|1.0               |NULL                                                                                   |NULL          |NaN        |NULL       |NULL                                                                                           |2.52685141797091E7  |1.1325712714124243E11|\n",
+      "|stddev |NULL         |115848.03076348678                                                                                                                                                 |16840.09598893862                   |NaN   |0.0         |NULL        |2.5312470604653375E11     |3.1954718624608687E12|0.0               |NULL                                                                                   |NULL          |NaN        |NULL       |NULL                                                                                           |3.4549545773609333E9|2.5831992150195193E11|\n",
+      "|min    |             |                                                                                                                                                                   |07000                               |'aiea |001         |Unknown     |!MPACT Theatre            |                     |001               |\"... more bottles, and I try to ration it like it's water in the Sahara, but if it ...\"|(01) 444 5995 |00         |aargau     |#05 Mac Arthur Highway, Paraiso,, #05 MacArthur Highway Closed ⋅ Opens 8:30AM · +63 45 985 0220|+13063742233        |,                    |\n",
+      "|max    |Â \"\".edmonton|📞+7 (8482) 20-83-61 ✉️e-mail:info@teko-filter.ru 🔎самарская область, г. тольятти  ул. ульяны громовой 33а, 445045, tolyatti, samara oblast, russia, samara oblast|‏دالاس‏، ‏تكساس‏، ‏الولايات المتحدة‏|zywiec|zw          |Åland       |🥇Béton Surface Lanaudière|999+11               |zw                |２３ 87, Asahidai                                                                      |99 06 785 7651|zu         |zurich     |高崎市上小塙町 Gunma, Japan · +81 27-344-2311 Closed ⋅ Opens 9:30AM Tue In-store shopping      |ze10ex              |åland                |\n",
+      "+-------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+------+------------+------------+--------------------------+---------------------+------------------+---------------------------------------------------------------------------------------+--------------+-----------+-----------+-----------------------------------------------------------------------------------------------+--------------------+---------------------+\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Total rows: 431999\n",
+      "\n",
+      "Missing value percentages:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "domain: 0.03%\n",
+      "address: 0.00%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "category: 5.58%\n",
+      "city: 0.00%\n",
+      "country_code: 0.00%\n",
+      "country_name: 0.00%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "name: 9.26%\n",
+      "phone: 0.00%\n",
+      "phone_country_code: 0.00%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "raw_address: 27.81%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "raw_phone: 24.04%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "region_code: 28.04%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "region_name: 28.04%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "text: 18.29%\n",
+      "zip_code: 0.00%\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country: 5.74%\n",
+      "\n",
+      "Unique values in key columns:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country: 447\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "category: 10481\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[Stage 642:===========>                                             (1 + 4) / 5]\r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Merged dataset saved as 'merged_company_data.csv' in the /kaggle/working directory\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    }
+   ],
+   "source": [
+    "def main():\n",
+    "    datasets = load_datasets()\n",
+    "    \n",
+    "    for key, df in datasets.items():\n",
+    "        datasets[key] = preprocess_data(df, key)\n",
+    "        datasets[key] = standardize_country(datasets[key])\n",
+    "    \n",
+    "    print(\"Datasets loaded. Sample of each:\")\n",
+    "    for key, df in datasets.items():\n",
+    "        print(f\"\\n{key.capitalize()} dataset:\")\n",
+    "        df.show(5, truncate=False)\n",
+    "        print(f\"{key.capitalize()} schema:\")\n",
+    "        df.printSchema()\n",
+    "    \n",
+    "    merged_df = merge_datasets(datasets)\n",
+    "    \n",
+    "    print(\"\\nMerged dataset (before conflict resolution):\")\n",
+    "    merged_df.describe().show(5, truncate=False)\n",
+    "    \n",
+    "    resolved_df = resolve_conflicts(merged_df)\n",
+    "    \n",
+    "    # Apply imputation and standardization\n",
+    "    final_df = impute_missing_values(resolved_df)\n",
+    "    final_df = standardize_data(final_df)\n",
+    "    \n",
+    "    print(\"\\nFinal merged dataset (after conflict resolution, imputation, and standardization):\")\n",
+    "    final_df.describe().show(5, truncate=False)\n",
+    "    \n",
+    "    data_quality_checks(final_df)\n",
+    "    \n",
+    "    final_df.write.csv('/kaggle/working/merged_company_data.csv', header=True, mode='overwrite')\n",
+    "    print(\"Merged dataset saved as 'merged_company_data.csv' in the /kaggle/working directory\")\n",
+    "\n",
+    "if __name__ == \"__main__\":\n",
+    "    main()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cb3dbe9c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.038242,
+     "end_time": "2024-09-27T15:15:11.586944",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:11.548702",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "In our main function, we:\n",
+    "1. Load all datasets\n",
+    "2. Display samples and schemas of each dataset for verification\n",
+    "3. Merge the datasets\n",
+    "4. Resolve conflicts\n",
+    "5. Display the final merged dataset\n",
+    "6. Save the result to a CSV file\n",
+    "\n",
+    "This process gives us a comprehensive view of our data at each stage, allowing us to verify the results of each step.\n",
+    "\n",
+    "## Next Steps\n",
+    "\n",
+    "Now that we have our merged and cleaned dataset, I can proceed with further analysis, visualization, and insights generation, as demonstrated in the subsequent parts of this notebook."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "54bd8bc6",
+   "metadata": {
+    "papermill": {
+     "duration": 0.037545,
+     "end_time": "2024-09-27T15:15:11.674721",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:11.637176",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Data Analysis and Insights\n",
+    "\n",
+    "Now that I have merged our datasets and resolved conflicts, let's perform some analysis on our final dataset to gain insights about the companies."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "24d01e7f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:15:11.792349Z",
+     "iopub.status.busy": "2024-09-27T15:15:11.791812Z",
+     "iopub.status.idle": "2024-09-27T15:15:33.141116Z",
+     "shell.execute_reply": "2024-09-27T15:15:33.139283Z"
+    },
+    "papermill": {
+     "duration": 21.430178,
+     "end_time": "2024-09-27T15:15:33.144523",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:11.714345",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Basic statistics of the merged dataset:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+-------+-------------------+--------------------+--------------------+------+------------+------------+--------------------+--------------------+------------------+--------------------+--------------+-----------+-----------+---------------------------+-------------------+--------------------+\n",
+      "|summary|             domain|             address|            category|  city|country_code|country_name|                name|               phone|phone_country_code|         raw_address|     raw_phone|region_code|region_name|                       text|           zip_code|             country|\n",
+      "+-------+-------------------+--------------------+--------------------+------+------------+------------+--------------------+--------------------+------------------+--------------------+--------------+-----------+-----------+---------------------------+-------------------+--------------------+\n",
+      "|  count|             431883|              431997|              407904|431999|      431999|      431999|              391988|              395056|            431999|              311875|        328160|     310854|     310854|                     353005|             431999|              407182|\n",
+      "|   mean|               NULL|  62684.555555555555|            31047.25|   NaN|         1.0|        NULL|1.043403407448442...|1.219850058764180...|               1.0|                NULL|          NULL|        NaN|       NULL|                       NULL| 2.52685141797091E7|1.132571271412424...|\n",
+      "| stddev|               NULL|  115848.03076348678|   16840.09598893862|   NaN|         0.0|        NULL|2.531247060465337...|3.195471862460868E12|               0.0|                NULL|          NULL|        NaN|       NULL|                       NULL|3.454954577360934E9|2.583199215019519...|\n",
+      "|    min|(519) 771-8508\"\".ca|\"... more bottles...|               07000| 'aiea|         001|     Unknown|      !MPACT Theatre|        +12012017300|               001|\"... more bottles...| (01) 444 5995|         00|     aargau|       #05 Mac Arthur Hi...|       +13063742233|                   ,|\n",
+      "|    max|      Â \"\".edmonton|📞+7 (8482) 20-83...|‏دالاس‏، ‏تكساس‏،...|zywiec|          zw|       Åland|🥇Béton Surface L...|              999+11|                zw|   ２３ 87, Asahidai|99 06 785 7651|         zu|     zurich|高崎市上小塙町 Gunma, Ja...|             ze10ex|               åland|\n",
+      "+-------+-------------------+--------------------+--------------------+------+------------+------------+--------------------+--------------------+------------------+--------------------+--------------+-----------+-----------+---------------------------+-------------------+--------------------+\n",
+      "\n",
+      "Number of companies per country:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+--------------+------+\n",
+      "|       country| count|\n",
+      "+--------------+------+\n",
+      "| united states|146250|\n",
+      "|        canada|139974|\n",
+      "|united kingdom| 47428|\n",
+      "|          NULL| 24817|\n",
+      "|     australia| 16150|\n",
+      "|        france| 10647|\n",
+      "|       germany|  3183|\n",
+      "|   new zealand|  2222|\n",
+      "|       belgium|  1917|\n",
+      "|        turkey|  1914|\n",
+      "+--------------+------+\n",
+      "only showing top 10 rows\n",
+      "\n",
+      "Top 10 company categories:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[Stage 651:>                                                        (0 + 4) / 4]\r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+--------------------+-----+\n",
+      "|            category|count|\n",
+      "+--------------------+-----+\n",
+      "|Tech Companies|Te...|72035|\n",
+      "|                NULL|24095|\n",
+      "|              Hotels|13515|\n",
+      "|Executive, Legisl...|10703|\n",
+      "| Business Consulting| 7640|\n",
+      "|Clinics - Surgeon...| 7537|\n",
+      "|Social Services &...| 6456|\n",
+      "|       Auto Services| 5872|\n",
+      "|Colleges & Univer...| 4820|\n",
+      "|Industrial Machin...| 4412|\n",
+      "+--------------------+-----+\n",
+      "only showing top 10 rows\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    }
+   ],
+   "source": [
+    "# Get the final merged dataset\n",
+    "final_df = spark.read.csv('/kaggle/working/merged_company_data.csv', header=True, inferSchema=True)\n",
+    "\n",
+    "# Display basic statistics\n",
+    "print(\"Basic statistics of the merged dataset:\")\n",
+    "final_df.describe().show()\n",
+    "\n",
+    "# Count the number of companies per country\n",
+    "print(\"Number of companies per country:\")\n",
+    "final_df.groupBy(\"country\").count().orderBy(\"count\", ascending=False).show(10)\n",
+    "\n",
+    "# Analyze category distribution\n",
+    "print(\"Top 10 company categories:\")\n",
+    "final_df.groupBy(\"category\").count().orderBy(\"count\", ascending=False).show(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3e9ed3eb",
+   "metadata": {
+    "papermill": {
+     "duration": 0.039847,
+     "end_time": "2024-09-27T15:15:33.238041",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:33.198194",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Observations\n",
+    "\n",
+    "1. **Country Distribution**: From the country distribution, we can see which countries have the most companies in our dataset. This gives us an idea of the geographical spread of our data.\n",
+    "\n",
+    "2. **Category Analysis**: The category distribution shows us the most common types of businesses in our dataset. This can be useful for understanding the industry landscape represented in our data.\n",
+    "\n",
+    "I will dive deeper into some specific aspects of our data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "a925bf6f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:15:33.317112Z",
+     "iopub.status.busy": "2024-09-27T15:15:33.316706Z",
+     "iopub.status.idle": "2024-09-27T15:15:54.687193Z",
+     "shell.execute_reply": "2024-09-27T15:15:54.686053Z"
+    },
+    "papermill": {
+     "duration": 21.414977,
+     "end_time": "2024-09-27T15:15:54.691939",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:33.276962",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Companies with multiple phone numbers:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+----+-----+\n",
+      "|name|phone|\n",
+      "+----+-----+\n",
+      "+----+-----+\n",
+      "\n",
+      "Missing values in each column:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "domain: 116\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "address: 2\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "category: 24095\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "city: 0\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country_code: 0\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country_name: 0\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "name: 40011\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "phone: 36943\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "phone_country_code: 0\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "raw_address: 120124\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "raw_phone: 103839\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "region_code: 121145\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "region_name: 121145\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "text: 78994\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "zip_code: 0\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "country: 24817\n",
+      "Top 10 domain TLDs:\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[Stage 704:>                                                        (0 + 4) / 4]\r"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "+---+------+\n",
+      "|tld| count|\n",
+      "+---+------+\n",
+      "|com|240330|\n",
+      "| ca| 54692|\n",
+      "|org| 31670|\n",
+      "| uk| 21886|\n",
+      "|gov| 15428|\n",
+      "| au| 12076|\n",
+      "|edu|  8481|\n",
+      "| fr|  5627|\n",
+      "|net|  4183|\n",
+      "| us|  3286|\n",
+      "+---+------+\n",
+      "only showing top 10 rows\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    }
+   ],
+   "source": [
+    "# Analyze companies with multiple phone numbers\n",
+    "print(\"Companies with multiple phone numbers:\")\n",
+    "multi_phone_df = final_df.filter(\n",
+    "    (F.col(\"phone\").contains(\";\")) |\n",
+    "    (F.col(\"phone\").contains(\",\")) |\n",
+    "    (F.col(\"phone\").contains(\"|\")) |\n",
+    "    (F.col(\"phone\").rlike(r\"\\s\"))\n",
+    ")\n",
+    "multi_phone_df.select(\"name\", \"phone\").show(10, truncate=False)\n",
+    "\n",
+    "# Check for missing values\n",
+    "print(\"Missing values in each column:\")\n",
+    "for column in final_df.columns:\n",
+    "    missing_count = final_df.filter(F.col(column).isNull()).count()\n",
+    "    print(f\"{column}: {missing_count}\")\n",
+    "\n",
+    "# Analyze domain TLDs\n",
+    "from pyspark.sql.functions import split, element_at\n",
+    "\n",
+    "print(\"Top 10 domain TLDs:\")\n",
+    "final_df = final_df.filter(F.col(\"domain\").isNotNull())\n",
+    "final_df.withColumn(\"tld\", element_at(split(col(\"domain\"), \"\\\\.\"), -1)) \\\n",
+    "    .groupBy(\"tld\").count().orderBy(\"count\", ascending=False).show(10)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0e6054b3",
+   "metadata": {
+    "papermill": {
+     "duration": 0.043877,
+     "end_time": "2024-09-27T15:15:54.792868",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:54.748991",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Further Insights\n",
+    "\n",
+    "1. **Multiple Phone Numbers**: Some companies could have multiple phone numbers listed. This could indicate multiple branches, departments, or international presence.\n",
+    "\n",
+    "2. **Missing Data**: By checking for missing values, we can identify which fields might need further data collection or imputation.\n",
+    "\n",
+    "3. **Domain Analysis**: Analyzing the Top-Level Domains (TLDs) gives us another perspective on the geographical or organizational distribution of the companies.\n",
+    "\n",
+    "Next, we shall visualize some of the findings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "21b6b10f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-09-27T15:15:54.949927Z",
+     "iopub.status.busy": "2024-09-27T15:15:54.949217Z",
+     "iopub.status.idle": "2024-09-27T15:15:58.891663Z",
+     "shell.execute_reply": "2024-09-27T15:15:58.890484Z"
+    },
+    "papermill": {
+     "duration": 4.058089,
+     "end_time": "2024-09-27T15:15:58.894629",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:54.836540",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "                                                                                \r"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAABKUAAAJOCAYAAABm7rQwAAAAOXRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjcuNSwgaHR0cHM6Ly9tYXRwbG90bGliLm9yZy/xnp5ZAAAACXBIWXMAAA9hAAAPYQGoP6dpAAC0P0lEQVR4nOzdeVhU5f//8dcgAm4sbiCpaGruqWkquaeJe5rmkuUSaos77pm41CdTcy3XNrO0RUsrF9TU3FfczT1LTUELAcUVuH9/+ON8HcEEg0Hw+biuuS7mPvc5855zmIF5zX3uYzPGGAEAAAAAAAAO5JTeBQAAAAAAAODRQygFAAAAAAAAhyOUAgAAAAAAgMMRSgEAAAAAAMDhCKUAAAAAAADgcIRSAAAAAAAAcDhCKQAAAAAAADgcoRQAAAAAAAAcjlAKAAAAAAAADkcoBQDAQ6Bu3bqqW7euQx/TZrOpV69eDn3Mh8kff/whm82mDz74IL1LSZYrV66oW7du8vHxkc1mU79+/dK7pAylSJEi6tKli8Mf98yZM3Jzc9PmzZsd/th3GjVqlGw2W5pvM732c1qaO3eubDabdu3ald6lpLrq1atr8ODB6V0GgEcYoRQAZEA2my1Zt19//TXNa5k5c6ZefPFFFS5cWDab7V8/jERGRqpHjx7Kly+fcuTIoXr16mn37t0perzFixercePGyps3r1xcXOTr66u2bdtq7dq1//GZpI5z585p1KhR2rt3b3qX8lD49ddfrd/H0NDQRMu7dOminDlzpkNlGc97772nuXPn6o033tCXX36pV1555V/7x8XF6fPPP1fdunWVO3duubq6qkiRIuratWum/HD9sBozZoyqVaumGjVqWG1dunS55/u2m5tbOlabcd0vZP7ggw9ks9n0xx9/OLawh9yQIUM0ffp0hYWFpXcpAB5RzuldAAAg5b788ku7+/PmzdPq1asTtZcuXTrNaxk3bpwuX76sqlWr6vz58/fsFx8fr6ZNm2rfvn0aNGiQ8ubNqxkzZqhu3boKDQ1ViRIl/vVxjDF69dVXNXfuXFWqVElBQUHy8fHR+fPntXjxYtWvX1+bN2/WM888k9pPMUXOnTun0aNHq0iRIqpYsWKy11u1alXaFfWQGDVqlH7++ef0LiPDWrt2rapXr66RI0fet++1a9f0wgsvKCQkRLVr19Zbb72l3Llz648//tB3332nL774QqdPn1bBggUdUPnD4ejRo3Jycuz3sRcvXtQXX3yhL774ItEyV1dXffLJJ4nas2TJ4ojS0kx67Gc8uOeff17u7u6aMWOGxowZk97lAHgEEUoBQAb08ssv293ftm2bVq9enajdEdavX2+Nkvq3ES+LFi3Sli1btHDhQrVp00aS1LZtWz3xxBMaOXKkFixY8K+PM3HiRM2dO1f9+vXTpEmT7E4ZGT58uL788ks5O2e8P2tXr15V9uzZ5eLikt6lpKmKFStq6dKl2r17t5566qn0LsehYmJilCNHjv+8nQsXLqhMmTLJ6jto0CCFhIRo8uTJiU7zGzlypCZPnvyf68loXF1dHf6YX331lZydndW8efNEy5ydndPlPTutpcd+xoNzcnJSmzZtNG/ePI0ePTrVT/EEgPvhawwAyKRiYmI0YMAAFSpUSK6uripZsqQ++OADGWPs+iXMKzR//nyVLFlSbm5uqly5sjZs2JCsx/Hz80vWP7GLFi2St7e3XnjhBastX758atu2rX788UfduHHjnuteu3ZNY8eOValSpaxTMO72yiuvqGrVqtb933//XS+++KJy586t7Nmzq3r16lq2bJndOgnzhNx9OkfCKWd3nv5Yt25dlStXTr/99pvq1aun7Nmz67HHHtP48ePt1nv66aclSV27drVOx5k7d67dNkJDQ1W7dm1lz55db731lrXs7jmlbty4oZEjR6p48eJydXVVoUKFNHjw4ET7avXq1apZs6Y8PT2VM2dOlSxZ0tpucvzbsV+3bp1sNpsWL16caL0FCxbIZrNp69at932M3r17y8vLS6NGjbpvX5vNlmS/u+eqSTh+mzZtUp8+fZQvXz55enrqtdde082bNxUZGalOnTrJy8tLXl5eGjx4cKLf/wSTJ0+Wn5+fsmXLpjp16ujgwYOJ+hw5ckRt2rRR7ty55ebmpipVquinn36y65NQ0/r16/Xmm28qf/789x2NdOHCBQUGBsrb21tubm6qUKGC3ciahN/HU6dOadmyZdbv1b1OQzp79qxmz56t5557Lsl5p7JkyaKBAwfa1bVnzx41btxY7u7uypkzp+rXr69t27Yl+dwedH/feXrV/fb3/v371aVLFz3++ONyc3OTj4+PXn31Vf3zzz92/RLmNDpx4oS6dOkiT09PeXh4qGvXrrp69apd36TmOoqMjFS/fv2s98nixYtr3Lhxio+Pt+v3zTffqHLlysqVK5fc3d1Vvnx5TZ06Ncn9f6clS5aoWrVqD3SKqjFG9erVU758+XThwgWr/ebNmypfvryKFSummJgYq3379u1q0qSJvLy8lCNHDj355JP/WmPC8Uh4f7pTUq/BTZs26emnn5abm5uKFSum2bNnJ7nde71ON2/erKCgIOv07VatWunixYt268bHx2vUqFHy9fVV9uzZVa9ePf32229pNk9VkSJF1KxZM23atElVq1aVm5ubHn/8cc2bN+++6166dElVq1ZVwYIFdfToUUn/dzryX3/9pZYtWypnzpzKly+fBg4cqLi4OLv1k/M3+oUXXkgU4jdv3lw2m83uvWf79u2y2WxasWKFpJTtc0l67rnn9Oeff3LaOYB0kfG+UgYA3JcxRi1atNC6desUGBioihUrauXKlRo0aJD++uuvRKMk1q9fr2+//VZ9+vSRq6urZsyYoUaNGmnHjh0qV65cqtS0Z88ePfXUU4lO66hatarmzJmjY8eOqXz58kmuu2nTJkVERKhfv37JOrUlPDxczzzzjK5evao+ffooT548+uKLL9SiRQstWrRIrVq1eqDncOnSJTVq1EgvvPCC2rZtq0WLFmnIkCEqX768GjdurNKlS2vMmDEKDg5Wjx49VKtWLUmyO6Xwn3/+UePGjdW+fXu9/PLL8vb2TvKx4uPj1aJFC23atEk9evRQ6dKldeDAAU2ePFnHjh3TkiVLJEmHDh1Ss2bN9OSTT2rMmDFydXXViRMnkj2p8v2Ofd26dVWoUCHNnz8/0X6bP3++ihUrJn9///s+jru7u/r376/g4OBUHy3Vu3dv+fj4aPTo0dq2bZvmzJkjT09PbdmyRYULF9Z7772n5cuXa8KECSpXrpw6depkt/68efN0+fJl9ezZU9evX9fUqVP17LPP6sCBA9bxOXTokGrUqKHHHntMQ4cOVY4cOfTdd9+pZcuW+v777xPtmzfffFP58uVTcHCwXXBwt2vXrqlu3bo6ceKEevXqpaJFi2rhwoXq0qWLIiMj1bdvX5UuXVpffvml+vfvr4IFC2rAgAGSboe6SVmxYoViY2PvO+dUgkOHDqlWrVpyd3fX4MGDlTVrVs2ePVt169bV+vXrVa1aNYfv79WrV+v3339X165d5ePjo0OHDmnOnDk6dOiQtm3bliiYbtu2rYoWLaqxY8dq9+7d+uSTT5Q/f36NGzfuns/76tWrqlOnjv766y+99tprKly4sLZs2aJhw4bp/PnzmjJlilVLhw4dVL9+fWt7hw8f1ubNm9W3b997bv/WrVvauXOn3njjjXv2+fvvvxO1ubi4yN3dXTabTZ999pmefPJJvf766/rhhx8k3R7pdujQIf3666/WCLzVq1erWbNmKlCggPr27SsfHx8dPnxYS5cu/dcak+vAgQNq2LCh8uXLp1GjRik2NlYjR4685/tXUhKC6ZEjR+qPP/7QlClT1KtXL3377bdWn2HDhmn8+PFq3ry5AgICtG/fPgUEBOj69ev/+Tncy4kTJ9SmTRsFBgaqc+fO+uyzz9SlSxdVrlxZZcuWTXKdv//+W88995wiIiK0fv16FStWzFoWFxengIAAVatWTR988IF++eUXTZw4UcWKFbN+F5L7N7pWrVr68ccfFR0dLXd3dxljtHnzZjk5OWnjxo1q0aKFJGnjxo1ycnKym7dMSt4+l6TKlStLkjZv3qxKlSqlzo4FgOQyAIAMr2fPnubOt/QlS5YYSebdd9+169emTRtjs9nMiRMnrDZJRpLZtWuX1fbnn38aNzc306pVqxTVkSNHDtO5c+d7Lnv11VcTtS9btsxIMiEhIffc7tSpU40ks3jx4mTV0a9fPyPJbNy40Wq7fPmyKVq0qClSpIiJi4szxhjz+eefG0nm1KlTduuvW7fOSDLr1q2z2urUqWMkmXnz5lltN27cMD4+PqZ169ZW286dO40k8/nnnyeqK2Ebs2bNSnJZnTp1rPtffvmlcXJysnsOxhgza9YsI8ls3rzZGGPM5MmTjSRz8eLF++6XuyX32A8bNsy4urqayMhIq+3ChQvG2dnZjBw58l8fI2FfLly40ERGRhovLy/TokULa3nnzp1Njhw5EtWV1Hb9/Pzsfr8Sjl9AQICJj4+32v39/Y3NZjOvv/661RYbG2sKFixot49PnTplJJls2bKZs2fPWu3bt283kkz//v2ttvr165vy5cub69evW23x8fHmmWeeMSVKlEhUU82aNU1sbOy/7htjjJkyZYqRZL766iur7ebNm8bf39/kzJnTREdH2z3/pk2b3neb/fv3N5LMnj177tvXGGNatmxpXFxczMmTJ622c+fOmVy5cpnatWsnem6O2N9Xr15NVOfXX39tJJkNGzZYbSNHjjSSEr23tGrVyuTJk8eu7e7fn3feecfkyJHDHDt2zK7f0KFDTZYsWczp06eNMcb07dvXuLu7J+t43unEiRNGkvnwww8TLevcubP1+rv7FhAQYNd39uzZ1u/Itm3bTJYsWUy/fv2s5bGxsaZo0aLGz8/PXLp0yW7dO49Twr5KkHA8knqvuvs12LJlS+Pm5mb+/PNPq+23334zWbJksdumMfd+nTZo0MCunv79+5ssWbJY7ythYWHG2dnZtGzZ0m57o0aNMpLu+bfl7uczYcKEJJdPmDAh0fu9n59fot+pCxcuGFdXVzNgwIBEz2Hnzp3m/PnzpmzZsubxxx83f/zxh91jJBzXMWPG2LVXqlTJVK5c2bqf3L/RCX9Pli9fbowxZv/+/UaSefHFF021atWs9Vq0aGEqVaqUqN777fM7ubi4mDfeeCPJfQcAaYnT9wAgE1q+fLmyZMmiPn362LUPGDBAxhhriH8Cf39/65tSSSpcuLCef/55rVy5MtEpBw/q2rVrSc41knClqWvXrt1z3ejoaElSrly5kvVYy5cvV9WqVVWzZk2rLWfOnOrRo4f++OMP/fbbbykp3W4bd84B4+LioqpVq+r3339P9jZcXV3VtWvX+/ZbuHChSpcurVKlSunvv/+2bs8++6yk26fVSZKnp6ck6ccff0x0ylFyJOfYd+rUSTdu3NCiRYusft9++61iY2NTNCeOh4eH+vXrp59++kl79uxJca33EhgYaDdyplq1ajLGKDAw0GrLkiWLqlSpkuSxatmypR577DHrftWqVVWtWjUtX75ckhQREaG1a9eqbdu2unz5snUs/vnnHwUEBOj48eP666+/7LbZvXv3ZI3qW758uXx8fNShQwerLWvWrOrTp4+uXLmi9evXJ39H/H8peb3ExcVp1apVatmypR5//HGrvUCBAnrppZe0adMma3sJ0np/S1K2bNmsn69fv66///5b1atXl6Qkr9j5+uuv292vVauW/vnnn0S132nhwoWqVauWvLy87F5jDRo0UFxcnHUaq6enp2JiYrR69ep7bispCacaenl5Jbnczc1Nq1evTnR7//337fr16NFDAQEB6t27t1555RUVK1ZM7733nrV8z549OnXqlPr162e9HyRIjfmB4uLitHLlSrVs2VKFCxe22kuXLq2AgIBk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",
+      "text/plain": [
+       "<Figure size 1200x600 with 1 Axes>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "\n",
+    "# Count companies per standardized country\n",
+    "country_counts = final_df.groupBy('country').count().orderBy('count', ascending=False)\n",
+    "\n",
+    "# Convert to Pandas for visualization\n",
+    "pandas_df = country_counts.toPandas()\n",
+    "\n",
+    "# Remove 'unknown' from the plot and get top 10\n",
+    "pandas_df = pandas_df[pandas_df['country'] != 'unknown'].head(10)\n",
+    "\n",
+    "# Plot top 10 countries (excluding 'unknown')\n",
+    "plt.figure(figsize=(12, 6))\n",
+    "sns.barplot(x='country', y='count', data=pandas_df)\n",
+    "plt.title('Top 10 Countries by Number of Companies (Excluding Unknown)')\n",
+    "plt.xlabel('Country')\n",
+    "plt.ylabel('Number of Companies')\n",
+    "plt.xticks(rotation=45, ha='right')\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9541743f",
+   "metadata": {
+    "papermill": {
+     "duration": 0.044788,
+     "end_time": "2024-09-27T15:15:58.984268",
+     "exception": false,
+     "start_time": "2024-09-27T15:15:58.939480",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Visualization Insights\n",
+    "\n",
+    "The bar plot provides a visual representation of the geographical distribution of companies in our dataset. This can help in quickly identifying which countries are most represented and may guide further analysis or business decisions.\n",
+    "\n",
+    "## Conclusion and Next Steps\n",
+    "\n",
+    "Through this analysis, I've gained several insights into our merged company dataset:\n",
+    "\n",
+    "1. I've identified the most common countries and categories represented in our data.\n",
+    "2. I've tried to discover companies with multiple phone numbers, which would indicate larger or more complex organizations.\n",
+    "3. I've analyzed the completeness of our data by checking for missing values.\n",
+    "4. I've examined the distribution of domain TLDs, providing another perspective on company characteristics.\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 5537447,
+     "sourceId": 9164807,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30746,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.13"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 287.345539,
+   "end_time": "2024-09-27T15:16:01.652450",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2024-09-27T15:11:14.306911",
+   "version": "2.5.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
